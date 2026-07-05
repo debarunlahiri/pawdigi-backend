@@ -49,6 +49,30 @@ npm run start:dev
 
 `npm run start`, `npm run start:dev`, and `npm run start:prod` run `npm run db:ensure` first. That script checks whether required PostgreSQL tables exist and runs `prisma db push --skip-generate` when tables are missing.
 
+### PostgreSQL Database And Grants
+
+For a local PostgreSQL instance, create an app user and database before running Prisma:
+
+```bash
+psql -U postgres -h localhost -p 5432
+```
+
+```sql
+CREATE USER pawdigi_app WITH PASSWORD 'pawdigi_app_password';
+CREATE DATABASE pawdigi OWNER pawdigi_app;
+GRANT ALL PRIVILEGES ON DATABASE pawdigi TO pawdigi_app;
+\c pawdigi
+GRANT ALL ON SCHEMA public TO pawdigi_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO pawdigi_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO pawdigi_app;
+```
+
+Then set:
+
+```env
+DATABASE_URL=postgresql://pawdigi_app:pawdigi_app_password@localhost:5432/pawdigi?schema=public
+```
+
 Swagger is available at `http://localhost:3000/api/docs`.
 
 ## Authentication

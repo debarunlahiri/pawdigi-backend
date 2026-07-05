@@ -204,6 +204,37 @@ npm run prisma:seed
 npm run start:dev
 ```
 
+## PostgreSQL Database And Grants
+
+For local PostgreSQL, create a dedicated application user and database:
+
+```bash
+psql -U postgres -h localhost -p 5432
+```
+
+```sql
+CREATE USER pawdigi_app WITH PASSWORD 'pawdigi_app_password';
+CREATE DATABASE pawdigi OWNER pawdigi_app;
+GRANT ALL PRIVILEGES ON DATABASE pawdigi TO pawdigi_app;
+\c pawdigi
+GRANT ALL ON SCHEMA public TO pawdigi_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO pawdigi_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO pawdigi_app;
+```
+
+Use this connection string in `.env`:
+
+```env
+DATABASE_URL=postgresql://pawdigi_app:pawdigi_app_password@localhost:5432/pawdigi?schema=public
+```
+
+After setting `DATABASE_URL`, run:
+
+```bash
+npm run db:ensure
+npm run prisma:seed
+```
+
 ## Automatic Table Creation
 
 The project includes:

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const { execFileSync } = require('node:child_process');
+require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 
 const REQUIRED_TABLES = [
