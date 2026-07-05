@@ -1,0 +1,736 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  GUARDIAN
+  VENDOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+  DELETED
+}
+
+enum VendorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum GuardianPermission {
+  VIEW_ONLY
+  MANAGE_HEALTH_RECORDS
+  MANAGE_REMINDERS
+  FULL_ACCESS
+}
+
+enum PetSpecies {
+  DOG
+  CAT
+  BIRD
+  RABBIT
+  OTHER
+}
+
+enum PetGender {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum ReminderType {
+  VACCINATION
+  DEWORMING
+  VET_VISIT
+  MEDICINE
+  CUSTOM
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum RepeatType {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+  CUSTOM
+}
+
+enum MedicalRecordType {
+  PRESCRIPTION
+  LAB_REPORT
+  SURGERY
+  ALLERGY
+  GENERAL_CHECKUP
+  CERTIFICATE
+  OTHER
+}
+
+enum DocumentType {
+  MEDICAL_REPORT
+  VACCINATION_CERTIFICATE
+  PASSPORT_PDF
+  VENDOR_KYC
+  PRODUCT_IMAGE
+  OTHER
+}
+
+enum DocumentVisibility {
+  PRIVATE
+  PET_OWNER_ONLY
+  GUARDIAN_ALLOWED
+  PUBLIC_SHARE
+  ADMIN_ONLY
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+  INACTIVE
+  REJECTED
+  OUT_OF_STOCK
+}
+
+enum OrderStatus {
+  PLACED
+  CONFIRMED
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURN_REQUESTED
+  RETURNED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum ShipmentStatus {
+  PENDING
+  READY_TO_SHIP
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+enum SchedulerRunStatus {
+  STARTED
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+model User {
+  id               String            @id @default(uuid())
+  email            String?           @unique
+  phoneNumber      String?           @unique
+  passwordHash     String?
+  role             Role
+  status           UserStatus        @default(ACTIVE)
+  lastLoginAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  customerProfile  CustomerProfile?
+  adminProfile     AdminProfile?
+  vendorProfile    VendorProfile?
+  ownedPets        Pet[]             @relation("PetOwner")
+  guardianPets     PetGuardian[]     @relation("GuardianUser")
+  reminders        Reminder[]
+  notifications    Notification[]
+  deviceTokens     DeviceToken[]
+  documents        Document[]        @relation("DocumentOwner")
+  cart             Cart?
+  orders           Order[]           @relation("CustomerOrders")
+  reviews          Review[]
+  refreshTokens    RefreshToken[]
+  otpVerifications OtpVerification[]
+  auditLogs        AuditLog[]        @relation("ActorAuditLogs")
+  apiRequestLogs   ApiRequestLog[]
+
+  @@index([email])
+  @@index([phoneNumber])
+  @@map("users")
+}
+
+model OtpVerification {
+  id                String    @id @default(uuid())
+  phoneNumber       String
+  otpCode           String
+  otpHash           String
+  purpose           String    @default("LOGIN")
+  deliveryChannel   String    @default("SMS")
+  deliveryProvider  String?
+  deliveryStatus    String    @default("PENDING")
+  deliveryMessage   String?
+  deviceId          String?
+  platform          String?
+  attempts          Int       @default(0)
+  maxAttempts       Int       @default(5)
+  lastAttemptAt     DateTime?
+  expiresAt         DateTime
+  deliveredAt       DateTime?
+  verifiedAt        DateTime?
+  failedAt          DateTime?
+  failureReason     String?
+  requestIpAddress  String?
+  verifiedIpAddress String?
+  userAgent         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  userId            String?
+  user              User?     @relation(fields: [userId], references: [id])
+
+  @@index([phoneNumber])
+  @@index([expiresAt])
+  @@index([deliveryStatus])
+  @@index([verifiedAt])
+  @@map("otp_challenges")
+}
+
+model CustomerProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("customer_profiles")
+}
+
+model AdminProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("admin_profiles")
+}
+
+model VendorProfile {
+  id              String       @id @default(uuid())
+  userId          String       @unique
+  businessName    String
+  contactPerson   String?
+  email           String
+  phoneNumber     String?
+  gstNumber       String?
+  panNumber       String?
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+  status          VendorStatus @default(PENDING)
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+  user            User         @relation(fields: [userId], references: [id])
+  products        Product[]
+  orders          Order[]      @relation("VendorOrders")
+  documents       Document[]
+
+  @@index([status])
+  @@map("vendor_profiles")
+}
+
+model Pet {
+  id              String              @id @default(uuid())
+  ownerId         String
+  name            String
+  species         PetSpecies
+  breed           String?
+  gender          PetGender?
+  dateOfBirth     DateTime?
+  weight          Decimal?            @db.Decimal(8, 2)
+  color           String?
+  microchipNumber String?
+  profileImageUrl String?
+  passportNumber  String?             @unique
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  deletedAt       DateTime?
+  owner           User                @relation("PetOwner", fields: [ownerId], references: [id])
+  guardians       PetGuardian[]
+  passport        PetPassport?
+  vaccinations    VaccinationRecord[]
+  deworming       DewormingRecord[]
+  medicalRecords  MedicalRecord[]
+  documents       Document[]
+  reminders       Reminder[]
+
+  @@index([ownerId])
+  @@map("pets")
+}
+
+model PetGuardian {
+  id             String             @id @default(uuid())
+  petId          String
+  guardianUserId String?
+  inviteEmail    String?
+  invitePhone    String?
+  inviteToken    String             @unique
+  permission     GuardianPermission
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  pet            Pet                @relation(fields: [petId], references: [id])
+  guardianUser   User?              @relation("GuardianUser", fields: [guardianUserId], references: [id])
+
+  @@index([petId])
+  @@index([guardianUserId])
+  @@map("pet_guardians")
+}
+
+model PetPassport {
+  id            String    @id @default(uuid())
+  petId         String    @unique
+  passportNo    String    @unique
+  shareToken    String?   @unique
+  shareExpires  DateTime?
+  shareRevoked  Boolean   @default(false)
+  pdfDocumentId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  pet           Pet       @relation(fields: [petId], references: [id])
+
+  @@map("pet_passports")
+}
+
+model VaccinationRecord {
+  id              String    @id @default(uuid())
+  petId           String
+  vaccineName     String
+  vaccinationDate DateTime
+  nextDueDate     DateTime?
+  vetName         String?
+  clinicName      String?
+  batchNumber     String?
+  notes           String?
+  documentId      String?
+  createdBy       String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  pet             Pet       @relation(fields: [petId], references: [id])
+  document        Document? @relation(fields: [documentId], references: [id])
+
+  @@index([petId])
+  @@map("vaccination_records")
+}
+
+model DewormingRecord {
+  id           String    @id @default(uuid())
+  petId        String
+  medicineName String
+  givenDate    DateTime
+  nextDueDate  DateTime?
+  dosage       String?
+  vetName      String?
+  notes        String?
+  documentId   String?
+  createdBy    String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+  pet          Pet       @relation(fields: [petId], references: [id])
+  document     Document? @relation(fields: [documentId], references: [id])
+
+  @@index([petId])
+  @@map("deworming_records")
+}
+
+model MedicalRecord {
+  id          String            @id @default(uuid())
+  petId       String
+  recordType  MedicalRecordType
+  title       String
+  description String?
+  recordDate  DateTime
+  vetName     String?
+  clinicName  String?
+  documentId  String?
+  createdBy   String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+  pet         Pet               @relation(fields: [petId], references: [id])
+  document    Document?         @relation(fields: [documentId], references: [id])
+
+  @@index([petId])
+  @@map("medical_records")
+}
+
+model Reminder {
+  id          String         @id @default(uuid())
+  petId       String
+  userId      String
+  type        ReminderType
+  title       String
+  description String?
+  dueDate     DateTime
+  repeatType  RepeatType     @default(NONE)
+  status      ReminderStatus @default(PENDING)
+  lastSentAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  pet         Pet            @relation(fields: [petId], references: [id])
+  user        User           @relation(fields: [userId], references: [id])
+
+  @@index([dueDate])
+  @@index([status])
+  @@map("reminders")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  deviceId  String
+  fcmToken  String
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, deviceId])
+  @@map("device_tokens")
+}
+
+model Document {
+  id             String              @id @default(uuid())
+  ownerId        String
+  petId          String?
+  vendorId       String?
+  type           DocumentType
+  fileName       String
+  mimeType       String
+  size           Int
+  storageKey     String              @unique
+  storageUrl     String?
+  visibility     DocumentVisibility  @default(PRIVATE)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  deletedAt      DateTime?
+  owner          User                @relation("DocumentOwner", fields: [ownerId], references: [id])
+  pet            Pet?                @relation(fields: [petId], references: [id])
+  vendor         VendorProfile?      @relation(fields: [vendorId], references: [id])
+  vaccinations   VaccinationRecord[]
+  deworming      DewormingRecord[]
+  medicalRecords MedicalRecord[]
+
+  @@map("documents")
+}
+
+model Category {
+  id        String     @id @default(uuid())
+  name      String
+  slug      String     @unique
+  parentId  String?
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  products  Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            String         @id @default(uuid())
+  vendorId      String
+  categoryId    String
+  name          String
+  sku           String         @unique
+  description   String?
+  price         Decimal        @db.Decimal(12, 2)
+  discountPrice Decimal?       @db.Decimal(12, 2)
+  petType       PetSpecies?
+  status        ProductStatus  @default(DRAFT)
+  isFeatured    Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  vendor        VendorProfile  @relation(fields: [vendorId], references: [id])
+  category      Category       @relation(fields: [categoryId], references: [id])
+  images        ProductImage[]
+  inventory     Inventory?
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  reviews       Review[]
+
+  @@index([vendorId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@map("product_images")
+}
+
+model Inventory {
+  id        String   @id @default(uuid())
+  productId String   @unique
+  stock     Int      @default(0)
+  reserved  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@map("inventories")
+}
+
+model Cart {
+  id         String     @id @default(uuid())
+  customerId String     @unique
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  customer   User       @relation(fields: [customerId], references: [id])
+  items      CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cart      Cart     @relation(fields: [cartId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+  @@map("cart_items")
+}
+
+model Order {
+  id          String        @id @default(uuid())
+  customerId  String
+  vendorId    String
+  status      OrderStatus   @default(PLACED)
+  totalAmount Decimal       @db.Decimal(12, 2)
+  address     Json
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  customer    User          @relation("CustomerOrders", fields: [customerId], references: [id])
+  vendor      VendorProfile @relation("VendorOrders", fields: [vendorId], references: [id])
+  items       OrderItem[]
+  payment     Payment?
+  shipment    Shipment?
+
+  @@index([customerId])
+  @@index([vendorId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  orderId           String        @unique
+  provider          String
+  providerOrderId   String?
+  providerPaymentId String?
+  status            PaymentStatus @default(PENDING)
+  amount            Decimal       @db.Decimal(12, 2)
+  currency          String        @default("INR")
+  webhookEventId    String?       @unique
+  rawPayload        Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  order             Order         @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+model Shipment {
+  id             String         @id @default(uuid())
+  orderId        String         @unique
+  status         ShipmentStatus @default(PENDING)
+  carrier        String?
+  trackingNumber String?
+  trackingUrl    String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  order          Order          @relation(fields: [orderId], references: [id])
+
+  @@map("shipments")
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  productId  String
+  customerId String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  product    Product  @relation(fields: [productId], references: [id])
+  customer   User     @relation(fields: [customerId], references: [id])
+
+  @@map("reviews")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String?
+  actorRole   Role?
+  action      String
+  entityType  String
+  entityId    String?
+  oldValue    Json?
+  newValue    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  actor       User?    @relation("ActorAuditLogs", fields: [actorUserId], references: [id])
+
+  @@map("audit_event_logs")
+}
+
+model ApiRequestLog {
+  id             String   @id @default(uuid())
+  requestId      String?
+  userId         String?
+  userRole       Role?
+  method         String
+  path           String
+  route          String?
+  query          Json?
+  body           Json?
+  params         Json?
+  statusCode     Int?
+  status         String
+  errorName      String?
+  errorMessage   String?
+  durationMs     Int
+  ipAddress      String?
+  userAgent      String?
+  referer        String?
+  contentLength  Int?
+  responseLength Int?
+  createdAt      DateTime @default(now())
+  user           User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([method])
+  @@index([path])
+  @@index([status])
+  @@index([statusCode])
+  @@index([createdAt])
+  @@map("api_request_logs")
+}
+
+model SchedulerRunLog {
+  id             String             @id @default(uuid())
+  schedulerName  String
+  queueName      String?
+  jobName        String?
+  bullJobId      String?
+  repeatJobKey   String?
+  status         SchedulerRunStatus @default(STARTED)
+  triggerType    String?
+  attempt        Int?
+  maxAttempts    Int?
+  input          Json?
+  output         Json?
+  itemsProcessed Int?
+  startedAt      DateTime           @default(now())
+  finishedAt     DateTime?
+  durationMs     Int?
+  errorName      String?
+  errorMessage   String?
+  errorStack     String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([schedulerName])
+  @@index([queueName])
+  @@index([status])
+  @@index([startedAt])
+  @@index([finishedAt])
+  @@index([bullJobId])
+  @@map("scheduler_execution_logs")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("refresh_token_sessions")
+}

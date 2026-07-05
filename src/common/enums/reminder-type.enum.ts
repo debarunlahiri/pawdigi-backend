@@ -1,0 +1,7 @@
+export enum ReminderTypeEnum {
+  VACCINATION = 'VACCINATION',
+  DEWORMING = 'DEWORMING',
+  VET_VISIT = 'VET_VISIT',
+  MEDICINE = 'MEDICINE',
+  CUSTOM = 'CUSTOM',
+}
