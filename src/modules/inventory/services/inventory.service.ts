@@ -11,8 +11,8 @@ export class InventoryService {
     if (!product) throw new ForbiddenException('Product access denied');
     return this.prisma.inventory.upsert({
       where: { productId },
-      update: { stock: dto.stock },
-      create: { productId, stock: dto.stock, reserved: 0 },
+      update: { stock: dto.stock, available: { set: dto.stock }, lastRestockedAt: new Date() },
+      create: { productId, stock: dto.stock, available: dto.stock, reserved: 0, lastRestockedAt: new Date() },
     });
   }
 }

@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from '../../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { RejectVendorDto } from '../dto/reject-vendor.dto';
@@ -17,8 +18,13 @@ export class AdminVendorsController {
   constructor(private readonly vendors: AdminVendorsService, private readonly auditLogs: AuditLogsService) {}
 
   @Get()
-  list() {
-    return this.vendors.list();
+  list(@Query() query: PaginationQueryDto) {
+    return this.vendors.list(query);
+  }
+
+  @Get(':vendorId')
+  get(@Param('vendorId') vendorId: string) {
+    return this.vendors.get(vendorId);
   }
 
   @Patch(':vendorId/approve')
@@ -39,6 +45,13 @@ export class AdminVendorsController {
   async suspend(@Req() req: any, @Param('vendorId') vendorId: string) {
     const vendor = await this.vendors.suspend(vendorId);
     await this.auditLogs.create({ actorUserId: req.user.id, actorRole: req.user.role, action: 'VENDOR_SUSPENDED', entityType: 'VendorProfile', entityId: vendor.id });
+    return vendor;
+  }
+
+  @Patch(':vendorId/reactivate')
+  async reactivate(@Req() req: any, @Param('vendorId') vendorId: string) {
+    const vendor = await this.vendors.reactivate(vendorId);
+    await this.auditLogs.create({ actorUserId: req.user.id, actorRole: req.user.role, action: 'VENDOR_REACTIVATED', entityType: 'VendorProfile', entityId: vendor.id });
     return vendor;
   }
 }

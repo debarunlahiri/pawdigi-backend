@@ -15,8 +15,8 @@ export class PaymentsService {
     const gatewayOrder = await this.gateway.createOrder({ amount: Number(order.totalAmount) * 100, currency: 'INR', receipt: order.id });
     const payment = await this.prisma.payment.upsert({
       where: { orderId: order.id },
-      update: { providerOrderId: gatewayOrder.providerOrderId, status: PaymentStatus.PENDING },
-      create: { orderId: order.id, provider: 'RAZORPAY', providerOrderId: gatewayOrder.providerOrderId, amount: order.totalAmount },
+      update: { providerOrderId: gatewayOrder.providerOrderId, status: PaymentStatus.PENDING, currency: gatewayOrder.currency },
+      create: { orderId: order.id, provider: 'RAZORPAY', providerOrderId: gatewayOrder.providerOrderId, amount: order.totalAmount, currency: gatewayOrder.currency },
     });
     return { data: { payment, gatewayOrder } };
   }
@@ -45,7 +45,7 @@ export class PaymentsService {
       await tx.order.update({ where: { id: payment.orderId }, data: { status: OrderStatus.CONFIRMED } });
       return tx.payment.update({
         where: { id: payment.id },
-        data: { status: PaymentStatus.SUCCESS, providerPaymentId: dto.razorpayPaymentId },
+        data: { status: PaymentStatus.SUCCESS, providerPaymentId: dto.razorpayPaymentId, providerSignature: dto.razorpaySignature, capturedAmount: payment.amount, capturedAt: new Date() },
       });
     });
     return { data: { verified: true, payment: updated } };

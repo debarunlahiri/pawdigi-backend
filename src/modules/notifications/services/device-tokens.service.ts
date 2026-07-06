@@ -9,12 +9,12 @@ export class DeviceTokensService {
   register(userId: string, dto: RegisterDeviceDto) {
     return this.prisma.deviceToken.upsert({
       where: { userId_deviceId: { userId, deviceId: dto.deviceId } },
-      update: { fcmToken: dto.fcmToken, platform: dto.platform },
-      create: { userId, deviceId: dto.deviceId, fcmToken: dto.fcmToken, platform: dto.platform },
+      update: { fcmToken: dto.fcmToken, platform: dto.platform, isActive: true, revokedAt: null, lastSeenAt: new Date() },
+      create: { userId, deviceId: dto.deviceId, fcmToken: dto.fcmToken, platform: dto.platform, isActive: true, lastSeenAt: new Date() },
     });
   }
 
   unregister(userId: string, deviceId: string) {
-    return this.prisma.deviceToken.deleteMany({ where: { userId, deviceId } });
+    return this.prisma.deviceToken.updateMany({ where: { userId, deviceId }, data: { isActive: false, revokedAt: new Date(), revocationReason: 'USER_UNREGISTERED' } });
   }
 }

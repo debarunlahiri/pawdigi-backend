@@ -32,7 +32,14 @@ export class PaymentWebhookService {
           webhookEventId: eventId,
           status,
           providerPaymentId: payload.payload?.payment?.entity?.id,
-          rawPayload: payload,
+          paymentMethod: payload.payload?.payment?.entity?.method,
+          capturedAt: status === PaymentStatus.SUCCESS ? new Date() : undefined,
+          failedAt: status === PaymentStatus.FAILED ? new Date() : undefined,
+          failureCode: payload.payload?.payment?.entity?.error_code,
+          failureReason: payload.payload?.payment?.entity?.error_description,
+          lastWebhookEvent: event,
+          rawPayload: payload.payload?.payment?.entity,
+          rawWebhookPayload: payload,
         },
       });
     });

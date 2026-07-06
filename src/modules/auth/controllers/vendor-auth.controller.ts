@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -15,16 +16,19 @@ import { VendorAuthService } from '../services/vendor-auth.service';
 export class VendorAuthController {
   constructor(private readonly auth: VendorAuthService) {}
 
+  @Throttle({ auth: { ttl: 60000, limit: 3 } })
   @Post('register')
   register(@Body() dto: VendorRegisterDto) {
     return this.auth.register(dto);
   }
 
+  @Throttle({ auth: { ttl: 60000, limit: 5 } })
   @Post('login')
   login(@Body() dto: VendorLoginDto) {
     return this.auth.login(dto);
   }
 
+  @Throttle({ auth: { ttl: 60000, limit: 10 } })
   @Post('refresh-token')
   refresh(@Body() dto: RefreshTokenDto) {
     return this.auth.refresh(dto);

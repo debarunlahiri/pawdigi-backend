@@ -1,7 +1,8 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from '../../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { SchedulerRunLogsService } from '../services/scheduler-run-logs.service';
@@ -15,8 +16,8 @@ export class SchedulerRunLogsController {
   constructor(private readonly schedulerLogs: SchedulerRunLogsService) {}
 
   @Get()
-  list() {
-    return this.schedulerLogs.list();
+  list(@Query() query: PaginationQueryDto) {
+    return this.schedulerLogs.list(query);
   }
 
   @Get(':id')

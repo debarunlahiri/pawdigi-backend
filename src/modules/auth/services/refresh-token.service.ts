@@ -18,6 +18,7 @@ export class RefreshTokenService {
         id: sessionId,
         userId,
         tokenHash: await bcrypt.hash(refreshToken, 12),
+        sessionLabel: 'API session',
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
     });
@@ -33,10 +34,11 @@ export class RefreshTokenService {
     if (!session || !(await bcrypt.compare(refreshToken, session.tokenHash))) {
       throw new UnauthorizedException('Invalid refresh token');
     }
+    await this.prisma.refreshToken.update({ where: { id: session.id }, data: { lastUsedAt: new Date() } });
     return payload;
   }
 
   revoke(sessionId: string, userId: string) {
-    return this.prisma.refreshToken.updateMany({ where: { id: sessionId, userId }, data: { revokedAt: new Date() } });
+    return this.prisma.refreshToken.updateMany({ where: { id: sessionId, userId }, data: { revokedAt: new Date(), revocationReason: 'LOGOUT_OR_ROTATION' } });
   }
 }

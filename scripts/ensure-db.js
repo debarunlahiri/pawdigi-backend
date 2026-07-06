@@ -57,10 +57,10 @@ async function main() {
 
     if (missingTables.length === 0) {
       console.log('[db:ensure] Required database tables already exist.');
-      return;
+    } else {
+      console.log(`[db:ensure] Missing tables: ${missingTables.join(', ')}`);
     }
 
-    console.log(`[db:ensure] Missing tables: ${missingTables.join(', ')}`);
     console.log('[db:ensure] Running prisma db push to create/update schema...');
 
     execFileSync('npx', ['prisma', 'db', 'push', '--skip-generate'], {

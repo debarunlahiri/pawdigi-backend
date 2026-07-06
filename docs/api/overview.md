@@ -44,3 +44,10 @@ Errors use:
   ]
 }
 ```
+
+## Category Index
+
+- [Customer APIs](customer/README.md): mobile customer authentication, profile, pets, health records, guardians, passports, cart, orders, payments, reviews, reminders, notifications, and documents.
+- [Admin APIs](admin/README.md): admin authentication, dashboard, users, customers, admins, pets, vendors, categories, products, orders, payments, shipments, reviews, reports, API logs, scheduler logs, and audit logs.
+- [Vendor APIs](vendor/README.md): vendor registration/login, profile, KYC, products, inventory, orders, shipments, and reports.
+- [Other APIs](other/README.md): public catalog, public reviews, public shared passports, payment webhooks, shared response objects, and Swagger.

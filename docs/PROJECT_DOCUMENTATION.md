@@ -132,6 +132,8 @@ Key operational tables:
 
 Core business tables follow the same convention, for example `users`, `customer_profiles`, `vendor_profiles`, `pet_passports`, `vaccination_records`, `order_items`, and `product_images`.
 
+Commerce and operational tables are intentionally detailed. The service layer populates lifecycle/status fields, pricing snapshots, provider identifiers, timestamps, and audit metadata for carts, cart items, device tokens, inventories, notifications, orders, order items, payments, pet passports, product images, refresh-token sessions, reviews, and shipments.
+
 ## Authentication
 
 ### Customer Mobile Authentication
@@ -312,9 +314,14 @@ src/core/database/prisma.service.ts
 Implemented:
 
 - Helmet
+- Express `x-powered-by` disabled
+- Proxy-aware client IP handling for deployments behind a load balancer
+- JSON body size limit of 256 KB and URL-encoded body size limit of 64 KB
 - CORS configuration
 - URI API versioning
 - DTO validation
+- Global rate limiting through Nest throttler
+- Stricter throttling on OTP, login, registration, and refresh-token endpoints
 - Customer JWT auth guard
 - JWT auth guard
 - Role guard
@@ -327,3 +334,10 @@ Implemented:
 - Razorpay REST API order/refund integration
 - Razorpay checkout signature verification
 - Razorpay webhook signature verification when raw body and secret are configured
+
+Recommended production edge protections:
+
+- Put the API behind a managed WAF/CDN such as Cloudflare, AWS WAF, or an equivalent provider.
+- Add edge rate limits per IP, ASN, country, and path for `/api/v1/customer/auth/request-otp`, `/api/v1/*/auth/login`, and `/api/v1/payments/webhook`.
+- Enable provider-level DDoS protection and bot filtering before traffic reaches Node.js.
+- Keep `CORS_ORIGINS` restricted to the deployed admin/vendor origins in production.

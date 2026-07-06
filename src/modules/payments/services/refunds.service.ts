@@ -20,7 +20,17 @@ export class RefundsService {
         reason: dto.reason ?? 'Admin refund',
       },
     });
-    const updated = await this.prisma.payment.update({ where: { id: payment.id }, data: { status: PaymentStatus.REFUNDED } });
+    const updated = await this.prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: PaymentStatus.REFUNDED,
+        refundedAmount: dto.amount,
+        refundProviderId: providerRefund.providerRefundId,
+        refundStatus: providerRefund.status,
+        refundReason: dto.reason,
+        refundedAt: new Date(),
+      },
+    });
     return { data: { payment: updated, providerRefund } };
   }
 }

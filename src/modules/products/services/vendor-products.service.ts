@@ -24,8 +24,8 @@ export class VendorProductsService {
         discountPrice: dto.discountPrice,
         petType: dto.petType,
         status: ProductStatus.PENDING_APPROVAL,
-        images: { create: dto.imageUrls?.map((url, sortOrder) => ({ url, sortOrder })) ?? [] },
-        inventory: { create: { stock: 0, reserved: 0 } },
+        images: { create: dto.imageUrls?.map((url, sortOrder) => ({ url, sortOrder, isPrimary: sortOrder === 0, isActive: true })) ?? [] },
+        inventory: { create: { stock: 0, reserved: 0, available: 0 } },
       },
     });
   }

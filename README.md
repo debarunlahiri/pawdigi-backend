@@ -107,3 +107,5 @@ npm run test:e2e
 ## Deployment Notes
 
 Use production secrets for JWT, Twilio SMS OTP service, PostgreSQL, Redis, S3-compatible storage, Razorpay, and panel origins. Do not use wildcard CORS in production.
+
+The API includes Helmet security headers, strict body size limits, global Nest throttling, and stricter OTP/auth throttles. For real DDoS protection, deploy behind a WAF/CDN or load balancer with edge rate limits and bot filtering.

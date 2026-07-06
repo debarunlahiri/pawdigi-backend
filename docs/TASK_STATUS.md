@@ -55,6 +55,7 @@ Current result:
 | Add indexes | `DONE` | Backend | Core lookup/index fields included |
 | Add detailed OTP persistence | `DONE` | Backend | OTP code/hash, device, delivery, request, verification, failure, and attempt metadata stored |
 | Add API request logs table | `DONE` | Backend | Stores method/path/status/duration/user/request metadata with sensitive input redaction |
+| Add detailed operational commerce tables | `DONE` | Backend | Cart, order, payment, shipment, notification, passport, review, inventory, image, device, and refresh-token tables include lifecycle and audit metadata |
 | Add seed script | `DONE` | Backend | Super admin, categories, sample approved vendor |
 | Add auto table creation script | `DONE` | Backend | `scripts/ensure-db.js` checks tables and runs `prisma db push` when missing |
 | Wire DB ensure into startup | `DONE` | Backend | `start`, `start:dev`, `start:prod`, Docker command |

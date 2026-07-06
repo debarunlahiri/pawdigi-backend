@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import appConfig from './config/app.config';
 import corsConfig from './config/cors.config';
 import databaseConfig from './config/database.config';
@@ -42,6 +43,7 @@ import { RemindersModule } from './modules/reminders/reminders.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { SchedulerRunLogsModule } from './modules/scheduler-logs/scheduler-run-logs.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { ShipmentsModule } from './modules/shipments/shipments.module';
 import { UsersModule } from './modules/users/users.module';
 import { VaccinationsModule } from './modules/vaccinations/vaccinations.module';
@@ -54,7 +56,18 @@ import { VendorsModule } from './modules/vendors/vendors.module';
       validationSchema: envValidationSchema,
       load: [appConfig, corsConfig, databaseConfig, jwtConfig, paymentConfig, redisConfig, smsConfig, storageConfig],
     }),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          { name: 'short', ttl: 1000, limit: 10 },
+          { name: 'medium', ttl: 60000, limit: config.get<number>('GLOBAL_RATE_LIMIT_PER_MINUTE') ?? 120 },
+          { name: 'long', ttl: 900000, limit: 1000 },
+          { name: 'auth', ttl: 60000, limit: config.get<number>('AUTH_RATE_LIMIT_PER_MINUTE') ?? 5 },
+          { name: 'otp', ttl: 600000, limit: config.get<number>('OTP_RATE_LIMIT_PER_10_MINUTES') ?? 3 },
+        ],
+      }),
+    }),
     DatabaseModule,
     LoggerModule,
     CacheModule,
@@ -91,6 +104,8 @@ import { VendorsModule } from './modules/vendors/vendors.module';
     ReportsModule,
     ApiLogsModule,
     AuditLogsModule,
+    SettingsModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

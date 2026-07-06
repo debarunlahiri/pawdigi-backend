@@ -4,9 +4,16 @@ Base URL: `http://localhost:3000/api/v1`
 
 Swagger URL: `http://localhost:3000/api/docs`
 
-This API reference is split module-wise. Each file includes endpoint names, methods, full URLs, request bodies, curl commands, and full example responses.
+This API reference is organized category-wise first, then module-wise for detailed request and response examples.
 
-## Files
+## Category-wise API Docs
+
+- [Customer APIs](api/customer/README.md)
+- [Admin APIs](api/admin/README.md)
+- [Vendor APIs](api/vendor/README.md)
+- [Other APIs](api/other/README.md)
+
+## Shared and Module-wise Detail Files
 
 - [Overview](api/overview.md)
 - [Common Response Objects](api/common-response-objects.md)
@@ -21,6 +28,6 @@ This API reference is split module-wise. Each file includes endpoint names, meth
 - [Vendor APIs](api/vendors.md)
 - [Shipment APIs](api/shipments.md)
 - [Review APIs](api/reviews.md)
-- [Admin APIs](api/admin.md)
+- [Admin API Details](api/admin.md)
 - [API Logs](api/api-logs.md)
 - [Scheduler Logs](api/scheduler-logs.md)

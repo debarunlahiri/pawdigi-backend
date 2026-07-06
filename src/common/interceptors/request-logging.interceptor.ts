@@ -3,9 +3,13 @@ import { Observable, tap } from 'rxjs';
 import { PrismaService } from '../../core/database/prisma.service';
 
 const SENSITIVE_LOG_KEYS = new Set(['password', 'otp', 'token', 'accessToken', 'refreshToken', 'fcmToken', 'authorization']);
+const MAX_LOG_STRING_LENGTH = 1000;
 
 function sanitizeLogValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((item) => sanitizeLogValue(item));
+  if (typeof value === 'string') {
+    return value.length > MAX_LOG_STRING_LENGTH ? `${value.slice(0, MAX_LOG_STRING_LENGTH)}...[TRUNCATED]` : value;
+  }
   if (!value || typeof value !== 'object' || value instanceof Date) return value;
 
   return Object.fromEntries(

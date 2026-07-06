@@ -14,19 +14,45 @@ export class OrdersService {
       const vendorIds = new Set(products.map((product) => product.vendorId));
       if (vendorIds.size !== 1) throw new BadRequestException('Single order can contain products from one vendor');
       let totalAmount = 0;
+      let subtotalAmount = 0;
       for (const item of dto.items) {
         const product = products.find((candidate) => candidate.id === item.productId)!;
         if (!product.inventory || product.inventory.stock - product.inventory.reserved < item.quantity) throw new BadRequestException(`Insufficient stock for ${product.name}`);
-        totalAmount += Number(product.discountPrice ?? product.price) * item.quantity;
-        await tx.inventory.update({ where: { productId: product.id }, data: { reserved: { increment: item.quantity } } });
+        const unitPrice = Number(product.discountPrice ?? product.price);
+        subtotalAmount += Number(product.price) * item.quantity;
+        totalAmount += unitPrice * item.quantity;
+        await tx.inventory.update({
+          where: { productId: product.id },
+          data: { reserved: { increment: item.quantity }, available: { decrement: item.quantity } },
+        });
       }
       return tx.order.create({
         data: {
+          orderNumber: `PD-${Date.now()}`,
           customerId,
           vendorId: [...vendorIds][0],
+          subtotalAmount,
+          discountAmount: subtotalAmount - totalAmount,
           totalAmount,
+          itemCount: dto.items.reduce((sum, item) => sum + item.quantity, 0),
           address: dto.address as Prisma.InputJsonValue,
-          items: { create: dto.items.map((item) => ({ productId: item.productId, quantity: item.quantity, unitPrice: products.find((product) => product.id === item.productId)!.price })) },
+          items: {
+            create: dto.items.map((item) => {
+              const product = products.find((candidate) => candidate.id === item.productId)!;
+              const unitPrice = product.discountPrice ?? product.price;
+              return {
+                productId: item.productId,
+                vendorId: product.vendorId,
+                productName: product.name,
+                productSku: product.sku,
+                quantity: item.quantity,
+                unitPrice,
+                mrp: product.price,
+                discountAmount: (Number(product.price) - Number(unitPrice)) * item.quantity,
+                lineTotal: Number(unitPrice) * item.quantity,
+              };
+            }),
+          },
         },
         include: { items: true },
       });
@@ -48,10 +74,10 @@ export class OrdersService {
       if (order.status !== OrderStatus.PLACED && order.status !== OrderStatus.CONFIRMED) throw new BadRequestException('Order cannot be cancelled');
       if (order.status === OrderStatus.PLACED) {
         for (const item of order.items) {
-          await tx.inventory.update({ where: { productId: item.productId }, data: { reserved: { decrement: item.quantity } } });
+          await tx.inventory.update({ where: { productId: item.productId }, data: { reserved: { decrement: item.quantity }, available: { increment: item.quantity } } });
         }
       }
-      return tx.order.update({ where: { id: orderId }, data: { status: OrderStatus.CANCELLED } });
+      return tx.order.update({ where: { id: orderId }, data: { status: OrderStatus.CANCELLED, cancelledAt: new Date(), cancellationReason: 'Customer cancelled order' } });
     });
   }
 }
